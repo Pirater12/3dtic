@@ -1,25 +1,10 @@
 #include <3ds.h>
-#include <sf2d.h>
-#include <sftd.h>
+#include "../pp2d/pp2d/pp2d.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include "guithread.h"
-#include "font_ttf.h"
-
-extern const struct {
-  unsigned int 	 width;
-  unsigned int 	 height;
-  unsigned int 	 bytes_per_pixel;
-  unsigned char	 pixel_data[];
-} table;
-
-extern const struct {
-  unsigned int 	 width;
-  unsigned int 	 height;
-  unsigned int 	 bytes_per_pixel;
-  unsigned char	 pixel_data[];
-} paper;
-
+#include "table_png.h"
+#include "paper_png.h"
 typedef struct 
 {
 	char player1opt;
@@ -33,6 +18,15 @@ char *username = NULL;
 char board[10]={' ',' ',' ',' ',' ',' ',' ',' ',' '};
 int arr[9][2] = {{60,-15},{140,-15},{220,-15},{60,65},{140,65},{220,65},{60,145},{140,145},{220,145}};
 
+void pp2d_draw_textf_center(gfxScreen_t target, float y, float scaleX, float scaleY, u32 color, const char* format, ...)
+{
+	va_list arg;
+	char buf[256];
+	va_start (arg, format);
+	vsprintf(buf, format, arg);
+	va_end (arg);
+	pp2d_draw_text_center(target, y, scaleX, scaleY, color, buf);
+}
 bool checkWin(int x, char option)
 {
 	for(int i = 0; i<=8; i++){
@@ -65,17 +59,17 @@ bool checkTie()
 }
 void Win(void)
 {
-	sftd_draw_textf(font,10,10, RGBA8(0xFF,0xFF,0xFF,0xFF),40,"Player %d Wins!",game.chance == 1? 2 : 1);
+	pp2d_draw_textf(10,10, 10, 40, RGBA8(0xFF,0xFF,0xFF,0xFF),"Player %d Wins!",game.chance == 1? 2 : 1);
 }
 
 void topTie(void)
 {
-	sftd_draw_text(font,10,10, RGBA8(0xFF,0xFF,0xFF,0xFF),40,"It's a Tie!!");
+	pp2d_draw_text(10,10, 10, 40, RGBA8(0xFF,0xFF,0xFF,0xFF),"It's a Tie!!");
 }
 
 void topShowPlayerChance(void)
 {
-	sftd_draw_textf(font,10,10, RGBA8(0xFF,0xFF,0xFF,0xFF),40,"Player %d's chance", game.chance);
+	pp2d_draw_textf(10,10, 10, 40, RGBA8(0xFF,0xFF,0xFF,0xFF),"Player %d's chance", game.chance);
 }
 
 void OptAccordingTotouch(touchPosition *touch)
@@ -112,24 +106,26 @@ void OptAccordingTotouch(touchPosition *touch)
 	
 }
 
-sf2d_texture *tex1 = NULL, *tex2 = NULL;
+u8 tex[2];
 void botdrawBoard(void)
 {
-	sf2d_draw_texture(tex1,0,0);
-	sf2d_draw_texture(tex2,40,0);
-	sf2d_draw_line (120,0,120,240,2,RGBA8(0xFF,0x00,0x00,0xFF));
-	sf2d_draw_line (200,0,200,240,2,RGBA8(0xFF,0x00,0x00,0xFF));
-	sf2d_draw_line (40,80,280,80,2,RGBA8(0xFF,0x00,0x00,0xFF)); 
-	sf2d_draw_line (40,160,280,160,2,RGBA8(0xFF,0x00,0x00,0xFF));	
+	pp2d_texture_select(tex[0], 0, 0);
+	pp2d_texture_flip(HORIZONTAL);
+	pp2d_texture_depth(0.7f);
+	pp2d_texture_draw();
+	pp2d_draw_rectangle(120, 0, 2, 240, RGBA8(0xFF,0x00,0x00,0xFF));
+	pp2d_draw_rectangle(200, 0, 2, 240, RGBA8(0xFF,0x00,0x00,0xFF));
+	pp2d_draw_rectangle(40, 80, 240 , 2, RGBA8(0xFF,0x00,0x00,0xFF)); 
+	pp2d_draw_rectangle(40, 160, 240, 2, RGBA8(0xFF,0x00,0x00,0xFF));
 	for(int i=0; i<=8; i++)
 	{
-		sftd_draw_textf(font,arr[i][0],arr[i][1], RGBA8(0x0,0x0,0x0,0xFF),80,"%c",board[i]);			
+		pp2d_draw_textf(arr[i][0],arr[i][1], 1.0f, 1.0f, RGBA8(0x0,0x0,0x0,0xFF), "%c", board[i]);			
 	}
 }
 void topDrawBoard(void)
 {
-	sftd_draw_textf(font,10,10, RGBA8(0xFF,0xFF,0xFF,0xFF),20,"Welcome to game %s", username);
-	//sftd_draw_textf(font,10,10, RGBA8(0x0,0x0,0x0,0xFF),10,"Player 1 you have %c as your option, Player 2 you have %c", 'X', 'O');			
+	pp2d_draw_textf_center(GFX_TOP, 110, 1.0f, 1.0f, RGBA8(0xFF, 0x00, 0x00, 0xFF), "Welcome to game %s!", username);
+	//pp2d_draw_textf(10,10, RGBA8(0x0,0x0,0x0,0xFF),10,"Player 1 you have %c as your option, Player 2 you have %c", 'X', 'O');			
 }
 
 void generate_random_x_0(void)
@@ -158,11 +154,13 @@ int main()
 	username = getUsername();
 	generate_random_x_0();
 	gui.topFunc = topDrawBoard;
-	gui.botFunc = botdrawBoard;//getUsername();
+	gui.botFunc = botdrawBoard;
 	Thread thread = threadCreate(guithread,NULL,(8*1024),0x24,-2,true);
 	hidInit();
-	tex1 = sf2d_create_texture_mem_RGBA8(table.pixel_data, table.width, table.height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
-	tex2 = sf2d_create_texture_mem_RGBA8(paper.pixel_data, paper.width, paper.height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
+	//tex1 = sf2d_create_texture_mem_RGBA8(table.pixel_data, table.width, table.height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
+	pp2d_load_texture_png_memory(tex[0], table_png, table_png_size);
+	//pp2d_load_texture_png_memory(tex[1], paper_png, paper_png_size);
+	//tex2 = sf2d_create_texture_mem_RGBA8(paper.pixel_data, paper.width, paper.height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
 	touchPosition touch;
 	while (aptMainLoop()) {
 
@@ -177,7 +175,5 @@ int main()
 			
 	}
 	hidExit();
-	sf2d_free_texture(tex2);
-	sf2d_free_texture(tex1);
 	return 0;
 }

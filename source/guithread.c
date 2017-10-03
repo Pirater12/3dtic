@@ -1,22 +1,18 @@
+#include "../pp2d/pp2d/pp2d.h"
 #include "guithread.h"
-#include "font_ttf.h"
-#include <sf2d.h>
 void guithread(void * arg)
 {	
-	sf2d_init();
-	sf2d_set_clear_color(RGBA8(0x40, 0x40, 0x40, 0xFF));
-	sftd_init();
-	font = sftd_load_font_mem(font_ttf,font_ttf_size);
+	pp2d_init();
+	pp2d_set_screen_color(GFX_TOP, ABGR8(0xFF, 0x40, 0x40, 0x40));
+	pp2d_set_screen_color(GFX_BOTTOM, ABGR8(0xFF, 0x40, 0x40, 0x40));
 	while(runThread)
 	{	
-		sf2d_start_frame(GFX_TOP, GFX_LEFT);
+		pp2d_begin_draw(GFX_TOP);
 		gui.topFunc();
-		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
+		pp2d_draw_on(GFX_BOTTOM);
 		gui.botFunc();
-		sf2d_swapbuffers();
+		pp2d_end_draw();
 	}
-	sftd_free_font(font);
-	sftd_fini();
-	sf2d_fini();
+	pp2d_exit();
 	threadExit(0);
 }
